@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container mt-4" style="min-height: 85vh;">
+  <h4 class="mb-4" style="font-weight:700; border-bottom:2px solid var(--accent); padding-bottom:8px;">
+    <i class="fa fa-heart text-accent me-2"></i>My Wishlist
+  </h4>
+
+  {% if username %}
+    {% if favoritesItems %}
+      <div class="card shadow-sm">
+        <div class="card-body p-0">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th class="favoritName">Name</th>
+                <th>Price</th>
+                <th></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in favoritesItems %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('product', member_id=item[4]) }}">
+                    <img src="{{ item[3] }}" class="fav-img" alt="{{ item[0] }}" />
+                  </a>
+                </td>
+                <td class="favoritName">
+                  <div style="font-weight:500;">{{ item[0] }}</div>
+                  <small class="text-muted">{{ item[1] | truncate(50) }}</small>
+                </td>
+                <td style="font-weight:600; color:var(--accent);">£{{ "%.2f"|format(item[2]) }}</td>
+                <td>
+                  <form action="{{ url_for('update_favorite', user_id=session['user_id'], product_id=item[4]) }}"
+                    method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <input type="hidden" name="action" value="update" />
+                    <button type="submit" class="btn-accent btn-sm">
+                      <i class="fa fa-shopping-basket"></i> Add to Basket
+                    </button>
+                  </form>
+                </td>
+                <td>
+                  <form action="{{ url_for('update_favorite', user_id=session['user_id'], product_id=item[4]) }}"
+                    method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <input type="hidden" name="action" value="remove" />
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                      <i class="fa fa-trash"></i>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    {% else %}
+      <div class="text-center py-5">
+        <i class="fa fa-heart fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">Your wishlist is empty</h5>
+        <a href="{{ url_for('products') }}" class="btn-accent text-decoration-none mt-3 d-inline-flex">
+          <i class="fa fa-arrow-right"></i> Browse Products
+        </a>
+      </div>
+    {% endif %}
+
+  {% else %}
+    <div class="not-logged-notice">
+      <i class="fa fa-lock text-accent"></i>
+      Please <a href="{{ url_for('login') }}" class="text-accent fw-600 text-decoration-none">log in</a> to view your wishlist.
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

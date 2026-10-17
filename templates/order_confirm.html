@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container mt-5 order-confirm" style="min-height:70vh;">
+  <div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+      <div class="checkmark">
+        <i class="fa fa-check-circle"></i>
+      </div>
+      <h2 style="font-weight:700;">Order Confirmed!</h2>
+      <p class="text-muted mb-1">Thank you for your purchase, <strong>{{ username }}</strong>.</p>
+      <p class="text-muted mb-4">Order reference: <strong class="text-accent">#{{ order_ref }}</strong></p>
+
+      <div class="card shadow-sm mb-4" style="text-align:left;">
+        <div class="card-header"><i class="fa fa-receipt text-accent me-2"></i>Order Details</div>
+        <div class="card-body p-0">
+          <table class="table mb-0">
+            <thead>
+              <tr><th>Item</th><th>Qty</th><th>Price</th></tr>
+            </thead>
+            <tbody>
+              {% for item in order_items %}
+              <tr>
+                <td>{{ item[0] }}</td>
+                <td>{{ item[2] }}</td>
+                <td>£{{ "%.2f"|format(item[2] * item[3]) }}</td>
+              </tr>
+              {% endfor %}
+              <tr class="table-light">
+                <td colspan="2" class="text-end fw-bold">Total</td>
+                <td class="fw-bold text-accent">£{{ "%.2f"|format(order_total) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p class="text-muted mb-4" style="font-size:.88rem;">
+        A confirmation email will be sent to <strong>{{ email }}</strong>.
+      </p>
+
+      <a href="{{ url_for('products') }}" class="btn-accent text-decoration-none d-inline-flex">
+        <i class="fa fa-arrow-right"></i> Continue Shopping
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

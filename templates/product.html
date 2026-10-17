@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div style="min-height: 85vh; padding: 2em 3em;">
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb" style="font-size:.82rem;">
+        <li class="breadcrumb-item"><a href="{{ url_for('products') }}" class="text-accent text-decoration-none">Products</a></li>
+        <li class="breadcrumb-item active">{{ member[1] }}</li>
+      </ol>
+    </nav>
+
+    <div class="row">
+      <!-- Image -->
+      <div class="col-md-6 mb-3">
+        <div class="product-detail-img">
+          <img src="{{ member[4] }}" alt="{{ member[1] }}" />
+        </div>
+      </div>
+
+      <!-- Details -->
+      <div class="col-md-6">
+        <h1 style="font-size:1.75rem; font-weight:700; margin-bottom:4px;">{{ member[1] }}</h1>
+        <p class="text-muted mb-3">{{ member[2] }}</p>
+
+        <div class="price-tag mb-2">£{{ "%.2f"|format(member[3]) }}</div>
+        <span class="badge-stock mb-3 d-inline-block">In Stock</span>
+
+        <!-- Payment plans -->
+        <div class="payment-plans mb-3">
+          <h6>Payment options</h6>
+          <ul>
+            <li>Pay in full — <strong>£{{ "%.2f"|format(member[3]) }}</strong></li>
+            <li>4 instalments of <strong>£{{ "%.2f"|format(member[3] / 4) }}</strong></li>
+            <li>6 instalments of <strong>£{{ "%.2f"|format(member[3] / 6) }}</strong></li>
+          </ul>
+        </div>
+
+        <!-- Add to basket -->
+        {% if not session.get('logged_out', True) %}
+          <form action="{{ url_for('addtobasket', user_id=session['user_id'], product_id=member[0]) }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <div class="mb-3">
+              <label for="quantity" class="form-label">Quantity</label>
+              <div class="qty-controls">
+                <button type="button" class="qty-btn" onclick="changeQuantity(-1)">−</button>
+                <input type="number" id="quantity" name="quantity"
+                  class="form-control text-center" value="1" min="1"
+                  style="width:70px;" />
+                <button type="button" class="qty-btn" onclick="changeQuantity(1)">+</button>
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn-accent">
+                <i class="fa fa-shopping-basket"></i> Add to Basket
+              </button>
+              <a href="{{ url_for('addtofavorites', user_id=session['user_id'], product_id=member[0]) }}"
+                class="btn btn-outline-secondary">
+                <i class="fa fa-heart text-accent"></i> Save
+              </a>
+            </div>
+          </form>
+        {% else %}
+          <div class="not-logged-notice mb-3">
+            <i class="fa fa-lock text-accent"></i>
+            <span>Please <a href="{{ url_for('login') }}" class="text-accent fw-600">log in</a> to add items to your basket.</span>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Quantity</label>
+            <div class="qty-controls">
+              <button type="button" class="qty-btn" onclick="changeQuantity(-1)">−</button>
+              <input type="number" id="quantity" class="form-control text-center" value="1" min="1" style="width:70px;" disabled />
+              <button type="button" class="qty-btn" disabled>+</button>
+            </div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn-accent" disabled style="opacity:.5; cursor:not-allowed;">
+              <i class="fa fa-shopping-basket"></i> Add to Basket
+            </button>
+            <a class="btn btn-outline-secondary" style="pointer-events:none; opacity:.5;">
+              <i class="fa fa-heart text-accent"></i> Save
+            </a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reviews section -->
+<div class="container" style="padding: 0 3em 2em;">
+  <div class="reviews-section">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h4 style="border-bottom:2px solid var(--accent); padding-bottom:6px; margin:0;">
+        Reviews
+        {% if comments %}<small class="text-muted ms-2" style="font-size:.8rem; font-family:inherit;">({{ comments|length }})</small>{% endif %}
+      </h4>
+      <button class="btn btn-outline-secondary btn-sm" onclick="toggleComments()">
+        <i class="fa fa-chevron-down text-accent" id="toggleIcon"></i>
+        Show reviews
+      </button>
+    </div>
+
+    <div id="commentsSection" style="display:none;">
+      {% if comments %}
+        {% for comment in comments %}
+          <div class="review-item">
+            <div class="review-title">{{ comment[3] }}</div>
+            <div class="review-body">{{ comment[4] }}</div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted" style="font-size:.875rem;">No reviews yet — be the first!</p>
+      {% endif %}
+    </div>
+
+    <!-- Review form -->
+    {% if not session.get('logged_out', True) %}
+      <div class="mt-3 p-3" style="background:var(--surface); border:1px solid var(--border-col); border-radius:var(--radius);">
+        <h6 class="mb-3" style="font-weight:600;">Leave a review</h6>
+        <form action="{{ url_for('update_comments', user_id=session['user_id'], product_id=member[0]) }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <input type="hidden" name="action" value="update" />
+          <div class="mb-2">
+            <label for="name" class="form-label">Title</label>
+            <input type="text" name="name" id="name" class="form-control" placeholder="e.g. Great quality!" required />
+          </div>
+          <div class="mb-2">
+            <label for="description" class="form-label">Comment</label>
+            <textarea name="description" id="description" class="form-control" rows="3"
+              placeholder="Share your experience..." required></textarea>
+          </div>
+          <button type="submit" class="btn btn-outline-secondary">
+            <i class="fa fa-paper-plane me-1 text-accent"></i> Submit Review
+          </button>
+        </form>
+      </div>
+    {% else %}
+      <p class="text-muted mt-3" style="font-size:.85rem;">
+        <a href="{{ url_for('login') }}" class="text-accent text-decoration-none">Log in</a> to leave a review.
+      </p>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

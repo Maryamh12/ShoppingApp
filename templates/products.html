@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="prodauctsPage">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h4 class="mb-0" style="font-weight:700;">All Products</h4>
+      <small class="text-muted">{{ members | length }} items available</small>
+    </div>
+  </div>
+
+  <div class="row mx-0" id="containerCard">
+    {% for member in members %}
+    <div>
+      <div class="card m-0" style="min-width:320px; max-width:100%;">
+        <div class="row g-0">
+          <div class="col-md-4 col-sm-12" style="height:200px;">
+            <img src="{{ member[4] }}" class="rounded-start"
+              style="width:100%; height:200px; object-fit:cover;" alt="{{ member[1] }}" />
+          </div>
+          <div class="col-md-8 col-sm-12" style="background:#fafafa; height:200px;">
+            <div class="card-body h-100 d-flex flex-column justify-content-between">
+              <div>
+                <h5 class="card-title">{{ member[1] }}</h5>
+                <p class="card-text text-muted" style="font-size:.85rem; line-height:1.4;">
+                  {{ member[2] | truncate(80) }}
+                </p>
+              </div>
+              <div class="d-flex align-items-center justify-content-between mt-2">
+                <span style="font-size:1.05rem; font-weight:700; color:var(--accent);">
+                  £{{ "%.2f"|format(member[3]) }}
+                </span>
+                <a class="btn btn-outline-secondary btn-sm"
+                   href="{{ url_for('product', member_id=member[0]) }}">
+                  View Details
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

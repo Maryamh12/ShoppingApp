@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container mt-4" style="min-height:85vh;">
+  <div class="row justify-content-center">
+    <div class="col-md-10">
+      <h4 class="mb-4" style="font-weight:700; border-bottom:2px solid var(--accent); padding-bottom:8px;">
+        <i class="fa fa-lock text-accent me-2"></i>Secure Checkout
+      </h4>
+
+      <div class="row g-4">
+
+        <!-- Payment form -->
+        <div class="col-lg-7">
+          <div class="card checkout-card shadow-sm">
+            <div class="card-header">
+              <i class="fa fa-credit-card text-accent me-2"></i>Payment Details
+            </div>
+            <div class="card-body p-4">
+              <form id="payment-form" method="post" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+                <!-- Contact -->
+                <h6 class="text-muted mb-3" style="font-size:.8rem; text-transform:uppercase; letter-spacing:.06em;">Contact</h6>
+                <div class="mb-3">
+                  <label for="email" class="form-label">Email address</label>
+                  <input type="email" class="form-control" id="email" name="email"
+                    placeholder="you@example.com" required
+                    value="{{ session.get('email', '') }}" />
+                </div>
+
+                <!-- Shipping -->
+                <h6 class="text-muted mb-3 mt-4" style="font-size:.8rem; text-transform:uppercase; letter-spacing:.06em;">Shipping Address</h6>
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="form-label">First name</label>
+                    <input type="text" class="form-control" name="first_name" placeholder="Jane" required />
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label">Last name</label>
+                    <input type="text" class="form-control" name="last_name" placeholder="Smith" required />
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Street address</label>
+                  <input type="text" class="form-control" name="address" placeholder="123 High Street" required />
+                </div>
+                <div class="row g-2 mb-3">
+                  <div class="col-6">
+                    <label class="form-label">City</label>
+                    <input type="text" class="form-control" name="city" placeholder="London" required />
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label">Postcode</label>
+                    <input type="text" class="form-control" name="postcode" placeholder="SW1A 1AA" required />
+                  </div>
+                </div>
+
+                <!-- Card -->
+                <h6 class="text-muted mb-3 mt-4" style="font-size:.8rem; text-transform:uppercase; letter-spacing:.06em;">Card Details</h6>
+                <div class="mb-1">
+                  <label class="form-label">Card information</label>
+                  <div id="card-element"></div>
+                  <div id="card-errors" role="alert"></div>
+                </div>
+                <small class="text-muted d-flex align-items-center gap-1 mb-3">
+                  <i class="fa fa-shield-alt text-accent"></i>
+                  Your card data is encrypted and never touches our servers
+                </small>
+
+                <div class="d-grid">
+                  <button type="submit" id="submit-btn" class="btn-accent justify-content-center" style="padding:12px;">
+                    <i class="fa fa-lock me-2"></i>
+                    Pay £<span id="pay-amount">{{ "%.2f"|format(order_total) }}</span> Securely
+                  </button>
+                </div>
+
+                <div id="payment-processing" style="display:none; text-align:center; padding:12px 0;">
+                  <div class="spinner-border spinner-border-sm text-muted me-2"></div>
+                  Processing your payment securely…
+                </div>
+
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Order summary -->
+        <div class="col-lg-5">
+          <div class="card shadow-sm">
+            <div class="card-header">
+              <i class="fa fa-receipt text-accent me-2"></i>Order Summary
+            </div>
+            <div class="card-body">
+              {% for item in basket_items %}
+              <div class="d-flex justify-content-between align-items-center mb-2" style="font-size:.88rem;">
+                <div class="d-flex align-items-center gap-2">
+                  <img src="{{ item[4] }}" style="width:44px;height:44px;object-fit:cover;border-radius:4px;" alt="{{ item[0] }}" />
+                  <div>
+                    <div style="font-weight:500;">{{ item[0] }}</div>
+                    <small class="text-muted">Qty: {{ item[2] }}</small>
+                  </div>
+                </div>
+                <span>£{{ "%.2f"|format(item[2] * item[3]) }}</span>
+              </div>
+              {% endfor %}
+
+              <hr />
+              <div class="d-flex justify-content-between mb-1" style="font-size:.88rem;">
+                <span class="text-muted">Subtotal</span>
+                <span>£{{ "%.2f"|format(order_total) }}</span>
+              </div>
+              <div class="d-flex justify-content-between mb-1" style="font-size:.88rem;">
+                <span class="text-muted">Shipping</span>
+                <span class="text-success">Free</span>
+              </div>
+              <div class="d-flex justify-content-between fw-bold mt-2" style="font-size:1rem; color:var(--accent);">
+                <span>Total</span>
+                <span>£{{ "%.2f"|format(order_total) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trust badges -->
+          <div class="mt-3 d-flex flex-column gap-2" style="font-size:.8rem; color:var(--text-muted);">
+            <div class="d-flex align-items-center gap-2"><i class="fa fa-shield-alt text-accent"></i> SSL encrypted checkout</div>
+            <div class="d-flex align-items-center gap-2"><i class="fa fa-undo text-accent"></i> 30-day returns policy</div>
+            <div class="d-flex align-items-center gap-2"><i class="fa fa-truck text-accent"></i> Free shipping on all orders</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+(function() {
+  var stripe = Stripe('{{ stripe_public_key }}');
+  var elements = stripe.elements();
+
+  var style = {
+    base: {
+      fontFamily: '"Public Sans", sans-serif',
+      fontSize: '15px',
+      color: '#212529',
+      '::placeholder': { color: '#adb5bd' }
+    },
+    invalid: { color: '#f56565' }
+  };
+
+  var card = elements.create('card', { style: style, hidePostalCode: true });
+  card.mount('#card-element');
+
+  card.on('focus', function() {
+    document.getElementById('card-element').classList.add('focused');
+  });
+  card.on('blur', function() {
+    document.getElementById('card-element').classList.remove('focused');
+  });
+  card.on('change', function(event) {
+    var el = document.getElementById('card-errors');
+    el.textContent = event.error ? event.error.message : '';
+  });
+
+  var form = document.getElementById('payment-form');
+  var submitBtn = document.getElementById('submit-btn');
+  var processingMsg = document.getElementById('payment-processing');
+
+  form.addEventListener('submit', function(event) {
+    event.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.7';
+    processingMsg.style.display = 'block';
+
+    stripe.createPaymentMethod({
+      type: 'card',
+      card: card,
+      billing_details: {
+        email: document.getElementById('email').value
+      }
+    }).then(function(result) {
+      if (result.error) {
+        document.getElementById('card-errors').textContent = result.error.message;
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        processingMsg.style.display = 'none';
+      } else {
+        var hidden = document.createElement('input');
+        hidden.setAttribute('type', 'hidden');
+        hidden.setAttribute('name', 'payment_method_id');
+        hidden.setAttribute('value', result.paymentMethod.id);
+        form.appendChild(hidden);
+        form.submit();
+      }
+    });
+  });
+})();
+</script>
+
+{% endblock %}
