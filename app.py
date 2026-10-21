@@ -7,6 +7,9 @@ Security improvements:
 - Stripe PaymentIntent API (replaces deprecated Charge API)
 - Password validation (min 8 chars) on register
 - Login required decorator for protected routes
+- Per-user authorisation on basket, wishlist and orders (403 on mismatch)
+- CSRF tokens on every state-changing POST
+- Idempotent order recording keyed on the Stripe PaymentIntent id
 - Session basket_count for navbar badge
 - No sensitive keys in source (use environment variables)
 """
@@ -31,7 +34,12 @@ CORS(app)
 app.config['SECRET_KEY']          = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
 stripe.api_key                    = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_YOUR_KEY_HERE')
 STRIPE_PUBLIC_KEY                 = os.environ.get('STRIPE_PUBLIC_KEY',  'pk_test_YOUR_KEY_HERE')
-DB_PATH                           = os.path.join(os.path.dirname(__file__), 'productdb.db')
+DB_PATH                           = os.environ.get('DB_PATH', os.path.join(os.path.dirname(__file__), 'productdb.db'))
+
+# Harden the session cookie
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE']   = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
 
 
 # ── Database helper ───────────────────────────────────────────
@@ -158,6 +166,8 @@ def login():
         return redirect(url_for('products'))
 
     if request.method == 'POST':
+        validate_csrf()
+
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
 
@@ -172,6 +182,9 @@ def login():
                 ).fetchone()
 
             if row and check_password_hash(row['password'], password):
+                # Start a fresh session on login (prevents session fixation);
+                # a new CSRF token is generated on the next page render
+                session.clear()
                 session['logged_out']  = False
                 session['user_id']     = row['user_id']
                 session['username']    = username
@@ -194,6 +207,8 @@ def register():
         return redirect(url_for('products'))
 
     if request.method == 'POST':
+        validate_csrf()
+
         username         = request.form.get('username', '').strip()
         email            = request.form.get('email', '').strip().lower()
         password         = request.form.get('password', '')
@@ -251,6 +266,10 @@ def logout():
 def basket(user_id):
     if session.get('logged_out', True):
         return render_template('basket.html', title='Basket', basketItems=[], username=None)
+
+    # Users may only view their own basket
+    if user_id != session.get('user_id'):
+        abort(403)
 
     username     = session.get('username')
     basket_items = get_basket_items(user_id)
@@ -340,6 +359,10 @@ def favorite(user_id):
     if session.get('logged_out', True):
         return render_template('favorite.html', title='Wishlist', favoritesItems=[], username=None)
 
+    # Users may only view their own wishlist
+    if user_id != session.get('user_id'):
+        abort(403)
+
     with get_db() as con:
         items = con.execute("""
             SELECT p.name, p.description, p.price, p.image_url, p.id
@@ -352,9 +375,11 @@ def favorite(user_id):
                            favoritesItems=items, username=session.get('username'))
 
 
-@app.route('/favorite/<int:user_id>/<int:product_id>')
+@app.route('/favorite/<int:user_id>/<int:product_id>', methods=['POST'])
 @login_required
 def addtofavorites(user_id, product_id):
+    validate_csrf()
+
     if user_id != session.get('user_id'):
         abort(403)
 
@@ -561,6 +586,14 @@ def _complete_order(user_id, basket_items, total, email, stripe_intent_id):
 
     try:
         with get_db() as con:
+            # Idempotency: never record the same payment twice (e.g. page refresh)
+            existing = con.execute(
+                'SELECT order_ref FROM Orders WHERE stripe_intent_id = ?', (stripe_intent_id,)
+            ).fetchone()
+            if existing:
+                return redirect(url_for('order_confirm', order_ref=existing['order_ref'],
+                                        email=email, total=f'{total:.2f}'))
+
             # Insert order header
             cur = con.execute(
                 """INSERT INTO Orders (user_id, order_date, total, status, stripe_intent_id, order_ref)
@@ -597,13 +630,19 @@ def _complete_order(user_id, basket_items, total, email, stripe_intent_id):
 
 
 @app.route('/checkout/return')
+@login_required
 def checkout_return():
-    """Handle 3DS redirect returns from Stripe."""
+    """Handle redirect returns from Stripe."""
     payment_intent_id = request.args.get('payment_intent')
     if payment_intent_id:
         intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+        user_id = session.get('user_id')
+
+        # The payment must belong to the logged-in user
+        if str(intent.metadata.get('user_id')) != str(user_id):
+            abort(403)
+
         if intent.status == 'succeeded':
-            user_id      = session.get('user_id')
             basket_items = get_basket_items(user_id)
             total        = basket_total(basket_items)
             email        = intent.receipt_email or session.get('email', '')
@@ -655,4 +694,4 @@ def not_found(e):
 # ── Entry point ───────────────────────────────────────────────
 
 if __name__ == '__main__':
-    app.run(debug=os.environ.get('FLASK_DEBUG', 'true').lower() == 'true')
+    app.run(debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true')

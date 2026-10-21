@@ -4,9 +4,15 @@
 This project is a web application built with Flask for the backend and uses SQLite as the database. 
 The application provides an online store for products, allowing users to view products, add them to their favorites or basket, and make purchases.
 
+## Project History
+
+First built in 2024 as a Flask shop using Stripe's Charge API. Refactored in 2026: PaymentIntent
+checkout, CSRF protection, per-user authorisation, order history, Docker, automated tests and CI.
+The full history of both versions is in this repository.
+
 ## Deployed Application
 
-View the deployed site [here](https://shopping-new-fc5cc05d42d1.herokuapp.com/).
+View the deployed site [here](https://web-production-fe679.up.railway.app/) (hosted on Railway).
 
 #### Sign up and create new account or try this demo user:
 - **Username:** `demo`
@@ -40,7 +46,7 @@ View the deployed site [here](https://shopping-new-fc5cc05d42d1.herokuapp.com/).
 
 ## 🛠 Technologies Used
 **Backend**
-- Python 3.9
+- Python 3.11
 - Flask 3.0.3 — routing, sessions, Jinja2 templating
 - Flask-CORS 4.0.0
 - SQLite — lightweight relational database via Python's built-in `sqlite3`
@@ -59,19 +65,20 @@ View the deployed site [here](https://shopping-new-fc5cc05d42d1.herokuapp.com/).
 - Parameterised SQL queries throughout — no raw string interpolation, prevents SQL injection
 - Password hashing with `pbkdf2:sha256:1000000` rounds via Werkzeug
 - `@login_required` decorator on all protected routes (basket, favourites, checkout, reviews)
+- Per-user authorisation: a user can only read or change their own basket, wishlist and orders (403 otherwise)
+- State-changing actions only accept POST, so they are always CSRF-checked
+- Orders are recorded idempotently, keyed on the Stripe PaymentIntent id, so a refresh can't create a duplicate order
+- Hardened session cookie (`HttpOnly`, `SameSite=Lax`, `Secure` in production); a fresh session is started at login
 - Stripe card data never touches the server — handled client-side via Stripe.js
 
 
 
-#### Development and Deployment
+#### Testing, Development and Deployment
 
-- Flask Debug Toolbar
-
-- Stripe for payment processing
-
-- Git
-
-- GitHub
+- pytest — 16 integration tests (auth, CSRF, cross-user authorisation, SQL injection attempt)
+- GitHub Actions — tests run on every push
+- Docker — `Dockerfile` with gunicorn, non-root user
+- Railway — production hosting
 
 
 
@@ -157,6 +164,28 @@ python app.py
 
 Open [http://127.0.0.1:5000](http://127.0.0.1:5000)
 
+### Run with Docker
+
+```bash
+docker build -t shopping-app .
+docker run -p 8000:8000 \
+  -e SECRET_KEY="your-long-random-secret" \
+  -e STRIPE_SECRET_KEY="sk_test_..." \
+  -e STRIPE_PUBLIC_KEY="pk_test_..." \
+  shopping-app
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000)
+
+### Run the tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest -q
+```
+
+Tests run against a temporary copy of the database, so `productdb.db` is never modified.
+
 ---
 
 
@@ -239,4 +268,4 @@ Total: £{{ "%.2f"|format(total.value) }}
 
 ---
 
-*Built by [Maryam Hazrati](https://maryam-hazrati.netlify.app) · Secure payments powered by Stripe*
+*Built by [Maryam Hazrati](https://maryam-hazratiii.netlify.app) · Secure payments powered by Stripe*

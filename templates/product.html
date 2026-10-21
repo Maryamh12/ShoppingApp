@@ -56,10 +56,11 @@
               <button type="submit" class="btn-accent">
                 <i class="fa fa-shopping-basket"></i> Add to Basket
               </button>
-              <a href="{{ url_for('addtofavorites', user_id=session['user_id'], product_id=member[0]) }}"
+              <button type="submit" formmethod="post"
+                formaction="{{ url_for('addtofavorites', user_id=session['user_id'], product_id=member[0]) }}"
                 class="btn btn-outline-secondary">
                 <i class="fa fa-heart text-accent"></i> Save
-              </a>
+              </button>
             </div>
           </form>
         {% else %}
