@@ -40,7 +40,7 @@ DB_PATH                           = os.environ.get('DB_PATH', os.path.join(os.pa
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE']   = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
-
+#
 
 # ── Database helper ───────────────────────────────────────────
 
